@@ -7,37 +7,29 @@ import { join } from 'node:path';
 
 import { listPidsWithEnvNeedles } from './ownership.mjs';
 
-function spawnOwnedSleep({ env }) {
-  const cleanEnv = {};
-  for (const [k, v] of Object.entries(env ?? {})) {
-    if (v == null) continue;
-    cleanEnv[k] = String(v);
-  }
-  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
-    env: cleanEnv,
-    stdio: 'ignore',
-  });
-  return child;
-}
-
-function buildMinimalChildEnv(extra = {}) {
+function buildChildEnv(extra = {}) {
   const env = {};
-  // Place stack ownership needles first so they remain visible even if ps truncates long env lines.
+  // Place tested ownership needles first to avoid truncation effects in process listings.
   for (const [k, v] of Object.entries(extra)) {
     if (v == null) continue;
     env[k] = String(v);
   }
-  for (const key of ['PATH', 'HOME', 'TMPDIR']) {
-    if (env[key]) continue;
-    const value = process.env[key];
-    if (typeof value === 'string' && value.length > 0) {
-      env[key] = value;
-    }
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k in env) continue;
+    if (v == null) continue;
+    env[k] = String(v);
   }
   return env;
 }
 
-function killGroup(pid) {
+function spawnOwnedSleep(extraEnv = {}) {
+  return spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    env: buildChildEnv(extraEnv),
+    stdio: 'ignore',
+  });
+}
+
+function killPid(pid) {
   try {
     process.kill(pid, 'SIGKILL');
   } catch {
@@ -80,20 +72,15 @@ test('listPidsWithEnvNeedles requires all needles to match', async (t) => {
 
   const tmp = await mkdtemp(join(tmpdir(), 'hstack-needles-'));
   const envPath = join(tmp, 'env');
-
   const infra = spawnOwnedSleep({
-    env: buildMinimalChildEnv({
-      HAPPIER_STACK_STACK: 't',
-      HAPPIER_STACK_ENV_FILE: envPath,
-      HAPPIER_STACK_PROCESS_KIND: 'infra',
-    }),
+    HAPPIER_STACK_STACK: 't',
+    HAPPIER_STACK_ENV_FILE: envPath,
+    HAPPIER_STACK_PROCESS_KIND: 'infra',
   });
   const session = spawnOwnedSleep({
-    env: buildMinimalChildEnv({
-      HAPPIER_STACK_STACK: 't',
-      HAPPIER_STACK_ENV_FILE: envPath,
-      HAPPIER_STACK_PROCESS_KIND: 'session',
-    }),
+    HAPPIER_STACK_STACK: 't',
+    HAPPIER_STACK_ENV_FILE: envPath,
+    HAPPIER_STACK_PROCESS_KIND: 'session',
   });
 
   try {
@@ -111,8 +98,8 @@ test('listPidsWithEnvNeedles requires all needles to match', async (t) => {
     assert.ok(pids.includes(infra.pid), `expected infra pid ${infra.pid} in results`);
     assert.ok(!pids.includes(session.pid), `expected session pid ${session.pid} to be excluded`);
   } finally {
-    killGroup(infra.pid);
-    killGroup(session.pid);
+    killPid(infra.pid);
+    killPid(session.pid);
     try {
       await rm(tmp, { recursive: true, force: true });
     } catch {
