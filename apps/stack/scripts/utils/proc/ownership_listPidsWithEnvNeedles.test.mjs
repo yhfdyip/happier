@@ -22,6 +22,21 @@ function spawnOwnedSleep({ env }) {
   return child;
 }
 
+function buildMinimalChildEnv(extra = {}) {
+  const env = {};
+  for (const key of ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'SHELL', 'LANG', 'LC_ALL']) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.length > 0) {
+      env[key] = value;
+    }
+  }
+  for (const [k, v] of Object.entries(extra)) {
+    if (v == null) continue;
+    env[k] = String(v);
+  }
+  return env;
+}
+
 function killGroup(pid) {
   try {
     process.kill(-pid, 'SIGKILL');
@@ -55,20 +70,18 @@ test('listPidsWithEnvNeedles requires all needles to match', async (t) => {
   const envPath = join(tmp, 'env');
 
   const infra = spawnOwnedSleep({
-    env: {
-      ...process.env,
+    env: buildMinimalChildEnv({
       HAPPIER_STACK_STACK: 't',
       HAPPIER_STACK_ENV_FILE: envPath,
       HAPPIER_STACK_PROCESS_KIND: 'infra',
-    },
+    }),
   });
   const session = spawnOwnedSleep({
-    env: {
-      ...process.env,
+    env: buildMinimalChildEnv({
       HAPPIER_STACK_STACK: 't',
       HAPPIER_STACK_ENV_FILE: envPath,
       HAPPIER_STACK_PROCESS_KIND: 'session',
-    },
+    }),
   });
 
   try {

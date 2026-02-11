@@ -92,7 +92,7 @@ describe("startServer DB provider selection", () => {
         expect(initDbPglite).not.toHaveBeenCalled();
     });
 
-    it("defaults to SQLite when light flavor provider is unset", async () => {
+    it("defaults to PGlite when light flavor provider is unset", async () => {
         applyEnvValues({
             SERVER_ROLE: "api",
             HAPPY_SERVER_LIGHT_DATA_DIR: "/tmp/happy-server-light-default",
@@ -102,8 +102,8 @@ describe("startServer DB provider selection", () => {
         const { startServer } = await import("./startServer");
         await startServer("light");
 
-        expect(initDbSqlite).toHaveBeenCalledTimes(1);
-        expect(initDbPglite).not.toHaveBeenCalled();
+        expect(initDbPglite).toHaveBeenCalledTimes(1);
+        expect(initDbSqlite).not.toHaveBeenCalled();
     });
 
     it("encodes sqlite DATABASE_URL as a safe file URI when data dir contains special characters", async () => {

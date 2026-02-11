@@ -50,7 +50,7 @@ export async function startServer(flavor: ServerFlavor): Promise<void> {
     process.env.HAPPIER_SERVER_FLAVOR = flavor;
     const role = getServerRoleFromEnv(process.env);
     const shouldEnableRedisAdapter = shouldEnableRedisAdapterFromEnv(process.env, flavor);
-    const dbProvider = getDbProviderFromEnv(process.env, flavor === 'light' ? 'sqlite' : 'postgres');
+    const dbProvider = getDbProviderFromEnv(process.env, flavor === 'light' ? 'pglite' : 'postgres');
     process.env.HAPPY_DB_PROVIDER = dbProvider;
     process.env.HAPPIER_DB_PROVIDER = dbProvider;
 
