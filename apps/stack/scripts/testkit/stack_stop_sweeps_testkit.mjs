@@ -7,8 +7,15 @@ import { fileURLToPath } from 'node:url';
 import { runNodeCapture } from './stack_script_command_testkit.mjs';
 
 function toSpawnEnv(env) {
+  const ownershipFirst = ['HAPPIER_STACK_STACK', 'HAPPIER_STACK_ENV_FILE', 'HAPPIER_STACK_PROCESS_KIND', 'npm_lifecycle_event', 'npm_package_name'];
   const cleanEnv = {};
+  for (const key of ownershipFirst) {
+    const value = env?.[key];
+    if (value == null) continue;
+    cleanEnv[key] = String(value);
+  }
   for (const [key, value] of Object.entries(env ?? {})) {
+    if (key in cleanEnv) continue;
     if (value == null) continue;
     cleanEnv[key] = String(value);
   }
