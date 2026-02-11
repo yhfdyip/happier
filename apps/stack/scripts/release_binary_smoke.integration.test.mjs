@@ -102,10 +102,23 @@ test('compiled happier and server binaries execute from isolated cwd', async (t)
     t.after(() => {
       spawnSync('bash', ['-lc', `rm -rf "${serverExtract.extractDir.replaceAll('"', '\\"')}"`], { stdio: 'ignore' });
     });
+    const serverDataDir = await mkdtemp(join(tmpdir(), 'happier-server-binary-smoke-data-'));
+    const serverDbDir = join(serverDataDir, 'pglite');
+    t.after(() => {
+      spawnSync('bash', ['-lc', `rm -rf "${serverDataDir.replaceAll('"', '\\"')}"`], { stdio: 'ignore' });
+    });
     const serverBoot = spawnSync(serverExtract.binaryPath, [], {
       cwd: '/tmp',
       encoding: 'utf-8',
-      env: { ...process.env, PORT: '3905', HAPPIER_SERVER_HOST: '127.0.0.1' },
+      env: {
+        ...process.env,
+        PORT: '3905',
+        HAPPIER_SERVER_HOST: '127.0.0.1',
+        HAPPY_SERVER_LIGHT_DATA_DIR: serverDataDir,
+        HAPPIER_SERVER_LIGHT_DATA_DIR: serverDataDir,
+        HAPPY_SERVER_LIGHT_DB_DIR: serverDbDir,
+        HAPPIER_SERVER_LIGHT_DB_DIR: serverDbDir,
+      },
       timeout: 7000,
     });
     const timedOut = serverBoot.error && serverBoot.error.code === 'ETIMEDOUT';

@@ -22,15 +22,17 @@ function spawnOwnedSleep({ env }) {
 
 function buildMinimalChildEnv(extra = {}) {
   const env = {};
-  for (const key of ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'SHELL', 'LANG', 'LC_ALL']) {
+  // Place stack ownership needles first so they remain visible even if ps truncates long env lines.
+  for (const [k, v] of Object.entries(extra)) {
+    if (v == null) continue;
+    env[k] = String(v);
+  }
+  for (const key of ['PATH', 'HOME', 'TMPDIR']) {
+    if (env[key]) continue;
     const value = process.env[key];
     if (typeof value === 'string' && value.length > 0) {
       env[key] = value;
     }
-  }
-  for (const [k, v] of Object.entries(extra)) {
-    if (v == null) continue;
-    env[k] = String(v);
   }
   return env;
 }
@@ -43,10 +45,22 @@ function killGroup(pid) {
   }
 }
 
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function waitForPidsWithRetries({ needles, matchPid, timeoutMs = 5000, intervalMs = 40 }) {
   const end = Date.now() + Math.max(0, Number(timeoutMs) || 0);
   let last = [];
   while (Date.now() < end) {
+    if (!isPidAlive(matchPid)) {
+      throw new Error(`pid ${matchPid} exited before needles became visible`);
+    }
     // eslint-disable-next-line no-await-in-loop
     last = await listPidsWithEnvNeedles(needles);
     if (last.includes(matchPid)) return last;
