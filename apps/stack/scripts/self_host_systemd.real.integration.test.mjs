@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmod, cp, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -79,6 +80,29 @@ async function waitForHealth(url, timeoutMs = 60_000) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
   return false;
+}
+
+async function reserveLocalhostPort() {
+  return await new Promise((resolvePort, rejectPort) => {
+    const server = createServer();
+    server.unref();
+    server.once('error', rejectPort);
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address();
+      if (!addr || typeof addr === 'string' || !Number.isFinite(addr.port) || addr.port <= 0) {
+        server.close(() => rejectPort(new Error('failed to reserve localhost port')));
+        return;
+      }
+      const selectedPort = addr.port;
+      server.close((error) => {
+        if (error) {
+          rejectPort(error);
+          return;
+        }
+        resolvePort(selectedPort);
+      });
+    });
+  });
 }
 
 test(
@@ -163,7 +187,7 @@ test(
     await chmod(hstackPath, 0o755);
 
     const serviceName = `happier-server-e2e-${Date.now().toString(36).slice(-6)}`;
-    const serverPort = 3900 + (process.pid % 500);
+    const serverPort = await reserveLocalhostPort();
     const commonEnv = {
       PATH: process.env.PATH ?? '',
       HAPPIER_SELF_HOST_INSTALL_ROOT: installRoot,
