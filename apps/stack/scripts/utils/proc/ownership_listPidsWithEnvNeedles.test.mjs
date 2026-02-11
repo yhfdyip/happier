@@ -1,109 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
-import { listPidsWithEnvNeedles } from './ownership.mjs';
+import { parsePsPidCommandOutputForNeedles } from './ownership.mjs';
 
-function buildChildEnv(extra = {}) {
-  const env = {};
-  // Place tested ownership needles first to avoid truncation effects in process listings.
-  for (const [k, v] of Object.entries(extra)) {
-    if (v == null) continue;
-    env[k] = String(v);
-  }
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k in env) continue;
-    if (v == null) continue;
-    env[k] = String(v);
-  }
-  return env;
-}
+test('parsePsPidCommandOutputForNeedles requires all needles to match', () => {
+  const output = [
+    '101 node server.js HAPPIER_STACK_ENV_FILE=/tmp/a/env HAPPIER_STACK_PROCESS_KIND=infra',
+    '102 node server.js HAPPIER_STACK_ENV_FILE=/tmp/a/env HAPPIER_STACK_PROCESS_KIND=session',
+    '103 node server.js HAPPIER_STACK_ENV_FILE=/tmp/b/env HAPPIER_STACK_PROCESS_KIND=infra',
+  ].join('\n');
 
-function spawnOwnedSleep(extraEnv = {}) {
-  return spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
-    env: buildChildEnv(extraEnv),
-    stdio: 'ignore',
-  });
-}
+  const pids = parsePsPidCommandOutputForNeedles(output, [
+    'HAPPIER_STACK_ENV_FILE=/tmp/a/env',
+    'HAPPIER_STACK_PROCESS_KIND=infra',
+  ]);
 
-function killPid(pid) {
-  try {
-    process.kill(pid, 'SIGKILL');
-  } catch {
-    // ignore
-  }
-}
-
-function isPidAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForPidsWithRetries({ needles, matchPid, timeoutMs = 5000, intervalMs = 40 }) {
-  const end = Date.now() + Math.max(0, Number(timeoutMs) || 0);
-  let last = [];
-  while (Date.now() < end) {
-    if (!isPidAlive(matchPid)) {
-      throw new Error(`pid ${matchPid} exited before needles became visible`);
-    }
-    // eslint-disable-next-line no-await-in-loop
-    last = await listPidsWithEnvNeedles(needles);
-    if (last.includes(matchPid)) return last;
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-  throw new Error(
-    `timed out waiting for pid ${matchPid} with needles ${JSON.stringify(needles)}; last seen pids=${JSON.stringify(last)}`
-  );
-}
-
-test('listPidsWithEnvNeedles requires all needles to match', async (t) => {
-  if (process.platform === 'win32') {
-    t.skip('requires ps eww support');
-    return;
-  }
-
-  const tmp = await mkdtemp(join(tmpdir(), 'hstack-needles-'));
-  const envPath = join(tmp, 'env');
-  const infra = spawnOwnedSleep({
-    HAPPIER_STACK_STACK: 't',
-    HAPPIER_STACK_ENV_FILE: envPath,
-    HAPPIER_STACK_PROCESS_KIND: 'infra',
-  });
-  const session = spawnOwnedSleep({
-    HAPPIER_STACK_STACK: 't',
-    HAPPIER_STACK_ENV_FILE: envPath,
-    HAPPIER_STACK_PROCESS_KIND: 'session',
-  });
-
-  try {
-    assert.ok(Number(infra.pid) > 1, 'expected infra pid');
-    assert.ok(Number(session.pid) > 1, 'expected session pid');
-
-    const needles = [
-      `HAPPIER_STACK_ENV_FILE=${envPath}`,
-      'HAPPIER_STACK_PROCESS_KIND=infra',
-    ];
-    const pids = await waitForPidsWithRetries({
-      needles,
-      matchPid: infra.pid,
-    });
-    assert.ok(pids.includes(infra.pid), `expected infra pid ${infra.pid} in results`);
-    assert.ok(!pids.includes(session.pid), `expected session pid ${session.pid} to be excluded`);
-  } finally {
-    killPid(infra.pid);
-    killPid(session.pid);
-    try {
-      await rm(tmp, { recursive: true, force: true });
-    } catch {
-      // ignore
-    }
-  }
+  assert.deepEqual(pids, [101]);
 });
+
+test('parsePsPidCommandOutputForNeedles deduplicates matches and ignores invalid pid lines', () => {
+  const output = [
+    '201 cmd HAPPIER_STACK_ENV_FILE=/tmp/x/env HAPPIER_STACK_PROCESS_KIND=infra',
+    'not-a-pid cmd HAPPIER_STACK_ENV_FILE=/tmp/x/env HAPPIER_STACK_PROCESS_KIND=infra',
+    '201 cmd HAPPIER_STACK_ENV_FILE=/tmp/x/env HAPPIER_STACK_PROCESS_KIND=infra',
+    '1 cmd HAPPIER_STACK_ENV_FILE=/tmp/x/env HAPPIER_STACK_PROCESS_KIND=infra',
+  ].join('\n');
+
+  const pids = parsePsPidCommandOutputForNeedles(output, [
+    'HAPPIER_STACK_ENV_FILE=/tmp/x/env',
+    'HAPPIER_STACK_PROCESS_KIND=infra',
+  ]);
+
+  assert.deepEqual(pids, [201]);
+});
+

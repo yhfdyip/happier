@@ -2,6 +2,25 @@ import { runCapture } from './proc.mjs';
 import { killPid } from '../expo/expo.mjs';
 import { terminateProcessGroup } from './terminate.mjs';
 
+export function parsePsPidCommandOutputForNeedles(output, needles) {
+  const raw = Array.isArray(needles) ? needles : [];
+  const ns = raw.map((n) => String(n ?? '').trim()).filter(Boolean);
+  if (ns.length === 0) return [];
+
+  const text = String(output ?? '');
+  const pids = [];
+  for (const line of text.split('\n')) {
+    if (!ns.every((n) => line.includes(n))) continue;
+    const m = line.trim().match(/^(\d+)\s+/);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    if (Number.isFinite(pid) && pid > 1) {
+      pids.push(pid);
+    }
+  }
+  return Array.from(new Set(pids));
+}
+
 export async function getPsEnvLine(pid) {
   const n = Number(pid);
   if (!Number.isFinite(n) || n <= 1) return null;
@@ -38,17 +57,7 @@ export async function listPidsWithEnvNeedle(needle) {
   try {
     // Include environment variables (eww) so we can match on HAPPIER_STACK_ENV_FILE=/.../env safely.
     const out = await runCapture('ps', ['eww', '-ax', '-o', 'pid=,command=']);
-    const pids = [];
-    for (const line of out.split('\n')) {
-      if (!line.includes(n)) continue;
-      const m = line.trim().match(/^(\d+)\s+/);
-      if (!m) continue;
-      const pid = Number(m[1]);
-      if (Number.isFinite(pid) && pid > 1) {
-        pids.push(pid);
-      }
-    }
-    return Array.from(new Set(pids));
+    return parsePsPidCommandOutputForNeedles(out, [n]);
   } catch {
     return [];
   }
@@ -62,17 +71,7 @@ export async function listPidsWithEnvNeedles(needles) {
   try {
     // Include environment variables (eww) so we can match on HAPPIER_STACK_ENV_FILE=/.../env safely.
     const out = await runCapture('ps', ['eww', '-ax', '-o', 'pid=,command=']);
-    const pids = [];
-    for (const line of out.split('\n')) {
-      if (!ns.every((n) => line.includes(n))) continue;
-      const m = line.trim().match(/^(\d+)\s+/);
-      if (!m) continue;
-      const pid = Number(m[1]);
-      if (Number.isFinite(pid) && pid > 1) {
-        pids.push(pid);
-      }
-    }
-    return Array.from(new Set(pids));
+    return parsePsPidCommandOutputForNeedles(out, ns);
   } catch {
     return [];
   }
