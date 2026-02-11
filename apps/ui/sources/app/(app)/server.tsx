@@ -517,7 +517,7 @@ export default function ServerConfigScreen() {
 
     const handleRename = React.useCallback(async (profile: ServerProfile) => {
         if (isCloudServerProfileId(profile.id)) {
-            Modal.alert(t('common.error'), t('server.cannotRenameCloud'));
+            Modal.alert(t('common.error'), 'Cloud servers cannot be renamed.');
             return;
         }
         const next = await Modal.prompt(
@@ -536,7 +536,7 @@ export default function ServerConfigScreen() {
 
     const handleRemove = React.useCallback(async (profile: ServerProfile) => {
         if (isCloudServerProfileId(profile.id)) {
-            Modal.alert(t('common.error'), t('server.cannotRemoveCloud'));
+            Modal.alert(t('common.error'), 'Cloud servers cannot be removed.');
             return;
         }
 

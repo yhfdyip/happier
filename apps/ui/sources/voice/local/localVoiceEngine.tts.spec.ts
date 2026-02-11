@@ -70,9 +70,9 @@ describe('local voice engine TTS behavior', () => {
             },
         });
 
-        let onDone: null | (() => void) = null;
+        let onDone: (() => void) | undefined;
         expoSpeechSpeak.mockImplementationOnce((_text: string, opts: any) => {
-            onDone = typeof opts?.onDone === 'function' ? opts.onDone : null;
+            onDone = typeof opts?.onDone === 'function' ? opts.onDone : undefined;
         });
 
         (globalThis.fetch as any).mockResolvedValueOnce({
@@ -110,8 +110,9 @@ describe('local voice engine TTS behavior', () => {
         // Should not resolve until onDone fires.
         for (let i = 0; i < 10; i++) await Promise.resolve();
         expect(resolved).toBe(false);
-
-        onDone?.();
+        if (typeof onDone === 'function') {
+            onDone();
+        }
         await stopPromise;
 
         // Only STT fetch; no /v1/audio/speech call.

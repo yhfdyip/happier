@@ -806,6 +806,8 @@ jobs:
       HAPPIER_SERVER_URL: http://localhost:3005
       HAPPIER_WEBAPP_URL: http://localhost:3005
       HAPPIER_HOME_DIR: /tmp/happier-dev-test
+      HAPPIER_DB_PROVIDER: pglite
+      HAPPY_DB_PROVIDER: pglite
       DANGEROUSLY_LOG_TO_SERVER_FOR_AI_AUTO_DEBUGGING: "true"
       HAPPIER_SERVER_LIGHT_DATA_DIR: /tmp/happier-server-light
       # Fall back to a deterministic non-secret for forks / untrusted PRs (no access to repo secrets).

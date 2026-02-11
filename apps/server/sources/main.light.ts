@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import 'reflect-metadata';
 
 import { startServer } from '@/startServer';
 import { registerProcessHandlers } from '@/utils/process/processHandlers';
