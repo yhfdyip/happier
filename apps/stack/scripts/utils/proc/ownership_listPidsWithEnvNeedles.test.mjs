@@ -16,9 +16,7 @@ function spawnOwnedSleep({ env }) {
   const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
     env: cleanEnv,
     stdio: 'ignore',
-    detached: true,
   });
-  child.unref();
   return child;
 }
 
@@ -39,7 +37,7 @@ function buildMinimalChildEnv(extra = {}) {
 
 function killGroup(pid) {
   try {
-    process.kill(-pid, 'SIGKILL');
+    process.kill(pid, 'SIGKILL');
   } catch {
     // ignore
   }
