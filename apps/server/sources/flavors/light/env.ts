@@ -1,16 +1,23 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { homedir as defaultHomedir } from 'node:os';
+import { homedir as defaultHomedir, tmpdir as defaultTmpdir } from 'node:os';
 
 export type LightEnv = NodeJS.ProcessEnv;
+
+function isBunfsHomeDir(path: string): boolean {
+    return path === '/$bunfs' || path === '/$bunfs/root' || path.startsWith('/$bunfs/');
+}
 
 export function resolveLightDataDir(env: LightEnv, opts?: { homedir?: string }): string {
     const fromEnv = (env.HAPPY_SERVER_LIGHT_DATA_DIR ?? env.HAPPIER_SERVER_LIGHT_DATA_DIR)?.trim();
     if (fromEnv) {
         return fromEnv;
     }
-    const home = opts?.homedir ?? defaultHomedir();
+    const home = (opts?.homedir ?? defaultHomedir()).trim();
+    if (!home || isBunfsHomeDir(home)) {
+        return join(defaultTmpdir(), 'happier-server-light');
+    }
     return join(home, '.happy', 'server-light');
 }
 
