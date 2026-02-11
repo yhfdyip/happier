@@ -253,7 +253,7 @@ export function renderServerEnvFile({ port, host, dataDir, filesDir, dbDir }) {
   return [
     `PORT=${port}`,
     `HAPPIER_SERVER_HOST=${host}`,
-    'HAPPIER_DB_PROVIDER=sqlite',
+    'HAPPIER_DB_PROVIDER=pglite',
     'HAPPIER_FILES_BACKEND=local',
     `HAPPIER_SERVER_LIGHT_DATA_DIR=${dataDir}`,
     `HAPPIER_SERVER_LIGHT_FILES_DIR=${filesDir}`,

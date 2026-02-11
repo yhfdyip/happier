@@ -65,7 +65,7 @@ test('renderServerServiceUnit references configured binary and env file', () => 
   assert.match(unit, /StandardOutput=append:\/var\/log\/happier\/server.log/);
 });
 
-test('renderServerEnvFile emits sqlite/local defaults for self-host mode', () => {
+test('renderServerEnvFile emits pglite/local defaults for self-host mode', () => {
   const envText = renderServerEnvFile({
     port: 3005,
     host: '127.0.0.1',
@@ -74,7 +74,7 @@ test('renderServerEnvFile emits sqlite/local defaults for self-host mode', () =>
     dbDir: '/var/lib/happier/pglite',
   });
   assert.match(envText, /PORT=3005/);
-  assert.match(envText, /HAPPIER_DB_PROVIDER=sqlite/);
+  assert.match(envText, /HAPPIER_DB_PROVIDER=pglite/);
   assert.match(envText, /HAPPIER_FILES_BACKEND=local/);
   assert.match(envText, /HAPPIER_SERVER_LIGHT_DATA_DIR=\/var\/lib\/happier/);
   assert.match(envText, /HAPPIER_SERVER_LIGHT_FILES_DIR=\/var\/lib\/happier\/files/);

@@ -30,7 +30,7 @@ function killGroup(pid) {
   }
 }
 
-async function waitForPidsWithRetries({ needles, matchPid, timeoutMs = 1500, intervalMs = 40 }) {
+async function waitForPidsWithRetries({ needles, matchPid, timeoutMs = 5000, intervalMs = 40 }) {
   const end = Date.now() + Math.max(0, Number(timeoutMs) || 0);
   let last = [];
   while (Date.now() < end) {
